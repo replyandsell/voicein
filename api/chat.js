@@ -1,6 +1,5 @@
 // api/chat.js - Vercel serverless function
 // Запрос идёт: browser -> /api/chat -> Claude API -> browser
-
 export default async function handler(req, res) {
   // Только POST запросы
   if (req.method !== 'POST') {
@@ -31,10 +30,19 @@ export default async function handler(req, res) {
         'content-type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'claude-3-5-sonnet-20241022',
+        model: 'claude-sonnet-4-6',
         max_tokens: 1024,
         messages: messages,
-        system: 'Ты добрый, терпеливый помощник для пожилого человека. Говори понятно, коротко и дружелюбно. Используй простые слова. Помни, что с тобой разговаривает пожилой человек, которому может быть сложно слышать - говори чётко и не спеши.'
+        system: [
+          {
+            type: 'text',
+            text: 'Ты добрый, терпеливый помощник и собеседник для пожилого человека. Говори понятно, коротко и дружелюбно. Используй простые слова. Помни, что с тобой разговаривает пожилой человек, которому может быть сложно слышать - говори чётко и не спеши.',
+            cache_control: {
+              type: 'ephemeral',
+              ttl: '1h'
+            }
+          }
+        ]
       }),
     });
 
@@ -45,6 +53,15 @@ export default async function handler(req, res) {
 
     const data = await response.json();
     const assistantMessage = data.content[0].text;
+
+    // Логируем использование кэша для отладки
+    if (data.usage) {
+      console.log('Cache stats:', {
+        input_tokens: data.usage.input_tokens,
+        cache_created: data.usage.cache_creation_input_tokens || 0,
+        cache_read: data.usage.cache_read_input_tokens || 0
+      });
+    }
 
     return res.status(200).json({
       message: assistantMessage,
