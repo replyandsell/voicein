@@ -1,0 +1,8 @@
+{
+  "name": "voice-companion",
+  "version": "1.0.0",
+  "description": "Voice chat companion with Claude AI",
+  "scripts": {},
+  "author": "replyandsell",
+  "license": "MIT"
+}
