@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Голосовой компаньон Claude</title>
+  <title>Голосовой помощник</title>
   <style>
     * {
       margin: 0;
@@ -89,9 +89,6 @@
     }
 
     button {
-      flex: 1;
-      min-height: 60px;
-      font-size: 16px;
       border: none;
       border-radius: 10px;
       cursor: pointer;
@@ -163,11 +160,36 @@
 
     .status.listening {
       color: #667eea;
-      font-weight: 600;
     }
 
-    .status.error {
-      color: #ff6b6b;
+    .warning-box {
+      display: none;
+      background: #fee;
+      border: 2px solid #f66;
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .warning-box h3 {
+      font-size: 20px;
+      color: #c33;
+      margin-bottom: 10px;
+    }
+
+    .warning-box p {
+      font-size: 16px;
+      color: #555;
+      margin-bottom: 10px;
+    }
+
+    #phoneNumbers {
+      padding: 10px;
+      border-radius: 5px;
+      font-weight: 600;
+      color: #c33;
+      font-size: 18px;
+      text-align: center;
     }
 
     .speed-control {
@@ -200,42 +222,6 @@
       min-width: 30px;
     }
 
-    .warning-box {
-      background: #fff3cd;
-      border: 2px solid #ffc107;
-      border-radius: 10px;
-      padding: 15px;
-      margin-bottom: 20px;
-      display: none;
-    }
-
-    .warning-box.show {
-      display: block;
-    }
-
-    .warning-box h3 {
-      color: #856404;
-      margin-bottom: 10px;
-      font-size: 18px;
-    }
-
-    .warning-box p {
-      color: #856404;
-      font-size: 16px;
-      margin-bottom: 10px;
-    }
-
-    .warning-box .phone {
-      background: white;
-      padding: 10px;
-      border-radius: 5px;
-      font-weight: 600;
-      color: #ff6b6b;
-      font-size: 18px;
-      text-align: center;
-    }
-
-    /* === ЭКРАН АВТОРИЗАЦИИ === */
     #authScreen {
       display: flex;
       flex-direction: column;
@@ -310,45 +296,27 @@
       .container {
         padding: 20px;
       }
-
-      .header h1 {
-        font-size: 24px;
-      }
-
       .chat-box {
         height: 250px;
       }
-
-      button {
-        font-size: 14px;
-      }
-
       .btn-speak {
-        min-height: 70px;
+        min-height: 80px;
+        font-size: 18px;
       }
     }
   </style>
 </head>
 <body>
-
-  <!-- ЭКРАН АВТОРИЗАЦИИ -->
   <div id="authScreen" style="display:none;">
     <div class="auth-box">
       <h2>🎤 Голосовой помощник</h2>
       <p>Введите пароль для входа</p>
-      <input 
-        type="password" 
-        id="authInput" 
-        class="auth-input" 
-        placeholder="••••••••"
-        maxlength="20"
-      >
+      <input type="password" id="authInput" class="auth-input" placeholder="••••••••" maxlength="20">
       <button class="auth-btn" id="authBtn">Войти</button>
       <div class="auth-error" id="authError"></div>
     </div>
   </div>
 
-  <!-- ОСНОВНОЕ ПРИЛОЖЕНИЕ -->
   <div class="container" id="appContainer" style="display:none;">
     <div class="header">
       <h1>🎤 Голосовой помощник</h1>
@@ -361,23 +329,15 @@
       <div id="phoneNumbers"></div>
     </div>
 
-    <div class="status" id="status">Готов к разговору</div>
+    <div class="status" id="status">📍 Готов к разговору</div>
 
     <div class="speed-control">
-      <label for="speedSlider">Скорость речи:</label>
-      <input 
-        type="range" 
-        id="speedSlider" 
-        min="0.5" 
-        max="1.5" 
-        step="0.1" 
-        value="0.9"
-      >
+      <label for="speedSlider">⚡ Скорость речи:</label>
+      <input type="range" id="speedSlider" min="0.5" max="1.5" step="0.1" value="0.9">
       <span class="speed-value" id="speedValue">0.9x</span>
     </div>
 
     <div class="chat-box" id="chatBox"></div>
-
     <button class="btn-speak" id="speakBtn">🎤 ГОВОРИ</button>
 
     <div class="controls">
@@ -387,8 +347,7 @@
   </div>
 
   <script>
-    // === АВТОРИЗАЦИЯ ===
-    const APP_PASSWORD = 'voice2024'; // ← Твой пароль, можешь изменить
+    const APP_PASSWORD = 'voice2024';
 
     function checkAuth() {
       const saved = localStorage.getItem('voice_auth');
@@ -402,6 +361,7 @@
     function showApp() {
       document.getElementById('authScreen').style.display = 'none';
       document.getElementById('appContainer').style.display = 'block';
+      initApp();
     }
 
     document.getElementById('authBtn').addEventListener('click', () => {
@@ -419,35 +379,14 @@
       if (e.key === 'Enter') document.getElementById('authBtn').click();
     });
 
-    // Запускаем проверку при загрузке
-    checkAuth();
-
-    // === ОСНОВНОЕ ПРИЛОЖЕНИЕ ===
-    // Опасные слова для фильтра
-    const DANGER_KEYWORDS = [
-      'хочу умереть', 'убить себя', 'повеситься', 'покончить', 
-      'суицид', 'самоубийство', 'режу', 'травлю себя',
-      'никому не нужен', 'лучше умереть', 'нет смысла жить',
-      'не хочу жить'
-    ];
-
+    const DANGER_KEYWORDS = ['хочу умереть', 'убить себя', 'повеситься', 'покончить', 'суицид', 'самоубийство', 'режу', 'травлю себя', 'никому не нужен', 'лучше умереть', 'нет смысла жить'];
     const STOP_KEYWORDS = ['пока', 'конец', 'спасибо', 'хватит', 'всё'];
+    const HOTLINES = { 'Россия': '8-800-555-00-50', 'Израиль': '1201' };
 
-    // Горячие линии
-    const HOTLINES = {
-      'Россия': '8-800-555-00-50',
-      'Израиль': '1201'
-    };
-
-    // Переменные
     let recognition;
     let conversationHistory = [];
     let isListening = false;
-    let isSpeaking = false;
-    let silenceTimeout;
-    let finalTranscript = '';
-    let microphoneActive = false;
-    let lastSpeechTime = Date.now();
+    let audioContext;
 
     const chatBox = document.getElementById('chatBox');
     const speakBtn = document.getElementById('speakBtn');
@@ -459,13 +398,15 @@
     const speedSlider = document.getElementById('speedSlider');
     const speedValue = document.getElementById('speedValue');
 
-    // Инициализация Speech Recognition
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    
-    if (!SpeechRecognition) {
-      status.textContent = '❌ Браузер не поддерживает распознавание речи';
-      speakBtn.disabled = true;
-    } else {
+    function initApp() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      
+      if (!SpeechRecognition) {
+        status.textContent = '❌ Браузер не поддерживает распознавание речи';
+        speakBtn.disabled = true;
+        return;
+      }
+
       recognition = new SpeechRecognition();
       recognition.lang = 'ru-RU';
       recognition.continuous = true;
@@ -473,215 +414,120 @@
 
       recognition.onstart = () => {
         isListening = true;
-        microphoneActive = true;
         speakBtn.classList.add('listening');
         speakBtn.textContent = '🎤 СЛУШАЮ...';
         status.textContent = 'Говори...';
         status.classList.add('listening');
-        lastSpeechTime = Date.now();
       };
 
       recognition.onresult = (event) => {
-        finalTranscript = '';
-        
+        let finalTranscript = '';
         for (let i = event.resultIndex; i < event.results.length; i++) {
-          const transcript = event.results[i].transcript;
+          const transcript = event.results[i][0].transcript;
           if (event.results[i].isFinal) {
             finalTranscript += transcript + ' ';
-            lastSpeechTime = Date.now();
           }
         }
-
         if (finalTranscript.trim()) {
-          // Очищаем предыдущий таймаут
-          clearTimeout(silenceTimeout);
-          
-          // Устанавливаем новый таймаут на конец фразы (3 сек паузы)
-          silenceTimeout = setTimeout(() => {
-            if (finalTranscript.trim()) {
-              handleUserMessage(finalTranscript.trim());
-              finalTranscript = '';
-            }
-          }, 3000);
+          handleUserInput(finalTranscript.trim());
         }
       };
 
       recognition.onerror = (event) => {
-        status.textContent = '❌ Ошибка: ' + event.error;
-        status.classList.add('error');
+        status.textContent = '❌ Ошибка микрофона: ' + event.error;
       };
 
-      recognition.onend = () => {
-        isListening = false;
-        microphoneActive = false;
-        speakBtn.classList.remove('listening');
-        speakBtn.textContent = '🎤 ГОВОРИ';
-      };
-    }
+      speakBtn.addEventListener('click', () => {
+        // Инициализируем Web Audio API от клика (требуется для iOS Safari)
+        if (!audioContext) {
+          audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        audioContext.resume().catch(e => console.log('Audio resume error:', e));
+        
+        if (!isListening) {
+          recognition.start();
+        }
+      });
 
-    // Обновление скорости речи
-    speedSlider.addEventListener('change', (e) => {
-      speedValue.textContent = e.target.value + 'x';
-    });
-
-    // Кнопка говори
-    speakBtn.addEventListener('click', () => {
-      if (!recognition) return;
-      
-      if (microphoneActive) {
-        // Уже слушаем
-        recognition.stop();
-        clearTimeout(silenceTimeout);
-      } else {
-        // Запускаем слушание
+      clearBtn.addEventListener('click', () => {
         chatBox.innerHTML = '';
         conversationHistory = [];
-        warningBox.classList.remove('show');
-        recognition.start();
-      }
-    });
+        status.textContent = '📍 Готов к разговору';
+      });
 
-    // Кнопка стоп
-    stopBtn.addEventListener('click', () => {
-      if (recognition && microphoneActive) {
+      stopBtn.addEventListener('click', () => {
         recognition.stop();
-        clearTimeout(silenceTimeout);
-      }
-      if (isSpeaking) {
-        window.speechSynthesis.cancel();
-        isSpeaking = false;
-      }
-    });
+        isListening = false;
+        speakBtn.classList.remove('listening');
+        speakBtn.textContent = '🎤 ГОВОРИ';
+      });
 
-    // Кнопка очистить
-    clearBtn.addEventListener('click', () => {
-      chatBox.innerHTML = '';
-      conversationHistory = [];
-      warningBox.classList.remove('show');
-      status.textContent = 'Готов к разговору';
-      status.classList.remove('listening', 'error');
-    });
+      speedSlider.addEventListener('input', (e) => {
+        speedValue.textContent = e.target.value + 'x';
+      });
 
-    // Проверка на опасный контент
+      Object.entries(HOTLINES).forEach(([country, number]) => {
+        const div = document.createElement('div');
+        div.textContent = `${country}: ${number}`;
+        phoneNumbers.appendChild(div);
+      });
+    }
+
     function checkDangerContent(text) {
-      const lowerText = text.toLowerCase();
-      return DANGER_KEYWORDS.some(keyword => lowerText.includes(keyword));
+      return DANGER_KEYWORDS.some(keyword => text.toLowerCase().includes(keyword));
     }
 
-    // Проверка на стоп-слова
     function checkStopWords(text) {
-      const lowerText = text.toLowerCase();
-      return STOP_KEYWORDS.some(keyword => lowerText.includes(keyword));
+      return STOP_KEYWORDS.some(word => text.toLowerCase().includes(word));
     }
 
-    // Синтез речи
-    function speakText(text) {
-      return new Promise((resolve) => {
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = 'ru-RU';
-        utterance.rate = parseFloat(speedSlider.value);
-        utterance.pitch = 1.0;
-        utterance.volume = 1.0;
-
-        utterance.onend = () => {
-          isSpeaking = false;
-          resolve();
-          // После ответа снова слушаем
-          if (recognition && !checkStopWords(conversationHistory[conversationHistory.length - 1]?.content || '')) {
-            recognition.start();
-          }
-        };
-
-        utterance.onerror = () => {
-          isSpeaking = false;
-          resolve();
-        };
-
-        isSpeaking = true;
-        window.speechSynthesis.speak(utterance);
-      });
-    }
-
-    // Показать сообщение опасности
-    function showWarningMessage() {
-      warningBox.classList.add('show');
-      phoneNumbers.innerHTML = Object.entries(HOTLINES)
-        .map(([country, phone]) => `<div class="phone">${country}: ${phone}</div>`)
-        .join('');
-      
-      const warningText = `Мне кажется, тебе нужна помощь. Пожалуйста, позвони специалистам. ${Object.values(HOTLINES).join(' или ')}.`;
-      speakText(warningText);
-    }
-
-    // Обработка сообщения пользователя
-    async function handleUserMessage(userText) {
-      // Добавляем сообщение пользователя
-      conversationHistory.push({
-        role: 'user',
-        content: userText
-      });
-
+    async function handleUserInput(userText) {
+      if (!userText) return;
+      recognition.stop();
+      isListening = false;
+      speakBtn.classList.remove('listening');
+      speakBtn.textContent = '🎤 ГОВОРИ';
       addMessageToChat(userText, 'user');
-      status.textContent = 'Думаю...';
 
-      // Проверяем на опасный контент
       if (checkDangerContent(userText)) {
-        showWarningMessage();
+        warningBox.style.display = 'block';
         return;
       }
 
-      // Проверяем на стоп-слова
       if (checkStopWords(userText)) {
         const goodbyeText = 'До свидания! Было приятно с тобой поговорить. Берегись!';
         addMessageToChat(goodbyeText, 'assistant');
         await speakText(goodbyeText);
-        recognition.stop();
         return;
       }
 
       try {
-        // Отправляем запрос на сервер
+        status.textContent = 'Думаю...';
         const response = await fetch('/api/chat', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            message: userText,
-            conversationHistory: conversationHistory
-          })
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: userText, conversationHistory })
         });
 
-        if (!response.ok) {
-          throw new Error('Network response was not ok');
-        }
-
+        if (!response.ok) throw new Error('Network error');
         const data = await response.json();
         const assistantText = data.message;
 
-        // Добавляем ответ ассистента
-        conversationHistory.push({
-          role: 'assistant',
-          content: assistantText
-        });
+        conversationHistory.push({ role: 'user', content: userText });
+        conversationHistory.push({ role: 'assistant', content: assistantText });
 
         addMessageToChat(assistantText, 'assistant');
         status.textContent = 'Говорю...';
-
-        // Проговариваем ответ
         await speakText(assistantText);
-        status.textContent = 'Готов к разговору';
+        status.textContent = '📍 Готов к разговору';
 
       } catch (error) {
         console.error('Error:', error);
         status.textContent = '❌ Ошибка подключения';
-        status.classList.add('error');
-        const errorText = 'Извини, у меня проблема с интернетом. Попробуй снова.';
-        await speakText(errorText);
+        await speakText('Извини, у меня проблема с интернетом. Попробуй снова.');
       }
     }
 
-    // Добавить сообщение в чат
     function addMessageToChat(text, role) {
       const messageEl = document.createElement('div');
       messageEl.className = `message ${role}`;
@@ -689,6 +535,27 @@
       chatBox.appendChild(messageEl);
       chatBox.scrollTop = chatBox.scrollHeight;
     }
+
+    async function speakText(text) {
+      return new Promise((resolve) => {
+        // Убедимся что audioContext активирован
+        if (audioContext) {
+          audioContext.resume();
+        }
+        
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'ru-RU';
+        utterance.rate = parseFloat(speedSlider.value);
+        utterance.onend = resolve;
+        utterance.onerror = () => {
+          console.error('Speech synthesis error');
+          resolve();
+        };
+        window.speechSynthesis.speak(utterance);
+      });
+    }
+
+    checkAuth();
   </script>
 </body>
 </html>
